@@ -1,108 +1,255 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Assistant</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    h1 { color: #333; }
-    #content {
-      border: 1px solid #ddd;
-      padding: 15px;
-      margin-top: 20px;
-      border-radius: 8px;
-    }
-    .input-container {
-      margin-top: 30px;
-    }
-    textarea {
-      width: 100%;
-      padding: 10px;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 16px;
-      resize: vertical;
-    }
-    button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-top: 10px;
-      font-size: 16px;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>介護サービス料金シミュレーター</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        h2 { color: #007bff; margin-top: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .form-group select, .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .form-group input[type="number"] { width: auto; }
+        .service-list { display: grid; gap: 15px; }
+        .service-item { display: flex; align-items: center; gap: 10px; }
+        .service-item input[type="number"] { width: 80px; }
+        .button-group { text-align: center; margin-top: 30px; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover { background-color: #0056b3; }
+        #result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        #result.limit-ok { border-color: #28a745; background-color: #e2f9e4; }
+        #result.limit-over { border-color: #dc3545; background-color: #f8e6e8; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        .alert { padding: 10px; border-radius: 4px; margin-top: 15px; }
+        .alert-success { background-color: #d4edda; color: #155724; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; }
+    </style>
 </head>
 <body>
-  <h1>介護サービス料金の料金シュミレーター</h1>
-  <div class="input-container">
-    <textarea id="prompt-input" placeholder="質問を入力してください..." rows="5"></textarea>
-    <button id="send-button">送信</button>
-  </div>
-  <div id="content">
-    <p>ここにAIからの回答が表示されます。</p>
-  </div>
+    <div class="container">
+        <h1>介護サービス料金シミュレーター</h1>
 
-  <script>
-    // あなたのAPIキーをここに貼り付けます
-    // ※注意：GitHub Pagesは公開されているため、APIキーは誰でも見ることができます。
-    // 本格的な運用には、より安全な方法を検討してください。
-    const API_KEY = "AIzaSyBr6bNi_B_ivA29-7CynYxO9Dvo6Ih0riw";
+        <div class="form-group">
+            <label for="kaigodo">要介護度を選択してください:</label>
+            <select id="kaigodo">
+                <option value="要支援1">要支援1</option>
+                <option value="要支援2">要支援2</option>
+                <option value="要介護1">要介護1</option>
+                <option value="要介護2">要介護2</option>
+                <option value="要介護3">要介護3</option>
+                <option value="要介護4">要介護4</option>
+                <option value="要介護5">要介護5</option>
+            </select>
+        </div>
 
-    // ボタンと入力欄の要素を取得
-    const sendButton = document.getElementById('send-button');
-    const promptInput = document.getElementById('prompt-input');
-    const contentDiv = document.getElementById('content');
+        <h2>利用したいサービスと回数（月単位）</h2>
+        <p>※訪問介護、通所介護、訪問看護、デイケア、ショートステイは4週間分で計算されます。</p>
 
-    // ボタンがクリックされたときの処理
-    sendButton.addEventListener('click', async () => {
-      const prompt = promptInput.value;
-      if (!prompt) {
-        alert('質問を入力してください。');
-        return;
-      }
+        <div class="service-list">
+            <div class="service-item">
+                <label>訪問介護（身体介護）：</label>
+                <select id="home-care-body-type">
+                    <option value="20分未満">20分未満</option>
+                    <option value="20分以上30分未満">20分以上30分未満</option>
+                    <option value="30分以上1時間未満">30分以上1時間未満</option>
+                    <option value="1時間以上1時間30分未満">1時間以上1時間30分未満</option>
+                </select>
+                <input type="number" id="home-care-body-count" min="0" value="0">
+                <span>回/週</span>
+            </div>
+            <div class="service-item">
+                <label>訪問介護（生活援助）：</label>
+                <select id="home-care-life-type">
+                    <option value="20分以上45分未満">20分以上45分未満</option>
+                    <option value="45分以上">45分以上</option>
+                </select>
+                <input type="number" id="home-care-life-count" min="0" value="0">
+                <span>回/週</span>
+            </div>
+            <div class="service-item">
+                <label>通所介護（デイサービス）：</label>
+                <input type="number" id="day-service-count" min="0" value="0">
+                <span>回/週</span>
+            </div>
+            <div class="service-item">
+                <label>訪問看護（1時間未満）：</label>
+                <input type="number" id="visiting-nurse-count" min="0" value="0">
+                <span>回/週</span>
+            </div>
+            <div class="service-item">
+                <label>デイケア（通所リハビリ）：</label>
+                <input type="number" id="day-care-count" min="0" value="0">
+                <span>回/週</span>
+            </div>
+            <div class="form-group">
+                <label for="short-stay-days">ショートステイの利用日数（月単位）：</label>
+                <input type="number" id="short-stay-days" min="0" value="0">
+                <span>日</span>
+            </div>
+        </div>
 
-      // 読み込み中であることを示す
-      contentDiv.innerHTML = '<p>AIが回答を生成中です...少々お待ちください。</p>';
+        <h2>その他サービス</h2>
+        <div class="form-group">
+            <label>入所施設（老健または特養）：</label>
+            <select id="facility-type">
+                <option value="なし">なし</option>
+                <option value="老健">老健</option>
+                <option value="特養">特養</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="other-cost">その他の福祉用具等の料金（月単位、円）：</label>
+            <input type="number" id="other-cost" min="0" value="0">
+        </div>
 
-      try {
-        const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + API_KEY, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{text: prompt}]
-            }]
-          })
+        <div class="button-group">
+            <button id="calculate-button">料金を計算</button>
+        </div>
+
+        <div id="result">
+            <p>ここに計算結果が表示されます。</p>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "AIzaSyBr6bNi_B_ivA29-7CynYxO9Dvo6Ih0riw";
+        const calculateButton = document.getElementById('calculate-button');
+        const kaigodoSelect = document.getElementById('kaigodo');
+        const resultDiv = document.getElementById('result');
+
+        calculateButton.addEventListener('click', async () => {
+            const kaigodo = kaigodoSelect.value;
+            const homeCareBodyType = document.getElementById('home-care-body-type').value;
+            const homeCareBodyCount = document.getElementById('home-care-body-count').value;
+            const homeCareLifeType = document.getElementById('home-care-life-type').value;
+            const homeCareLifeCount = document.getElementById('home-care-life-count').value;
+            const dayServiceCount = document.getElementById('day-service-count').value;
+            const visitingNurseCount = document.getElementById('visiting-nurse-count').value;
+            const dayCareCount = document.getElementById('day-care-count').value;
+            const shortStayDays = document.getElementById('short-stay-days').value;
+            const facilityType = document.getElementById('facility-type').value;
+            const otherCost = document.getElementById('other-cost').value;
+
+            const prompt = `あなたは介護保険の限度額を計算し、利用可能なサービスを判断するアシスタントです。以下の情報をもとに、ユーザーからの質問に答えてください。
+            
+            要介護度ごとの月額支給限度額:
+            要支援1: 50,320円
+            要支援2: 105,310円
+            要介護1: 167,650円
+            要介護2: 197,050円
+            要介護3: 270,480円
+            要介護4: 309,380円
+            要介護5: 362,170円
+            
+            介護サービス別料金（平均値）:
+            1. 訪問介護（身体介護）
+                20分未満: 205円
+                20分以上30分未満: 306円
+                30分以上1時間未満: 484円
+                1時間以上1時間30分未満: 697円
+            2. 訪問介護（生活援助）
+                20分以上45分未満: 224円
+                45分以上: 275円
+            3. 通所介護（デイサービス）7時間以上8時間未満
+                要介護1: 683円
+                要介護2: 804円
+                要介護3: 932円
+                要介護4: 1,060円
+                要介護5: 1,189円
+            4. 訪問看護
+                1時間未満: 857円
+            5. デイケア（通所リハビリテーション）7時間以上8時間未満
+                要介護1: 794円
+                要介護2: 941円
+                要介護3: 1,090円
+                要介護4: 1,266円
+                要介護5: 1,437円
+            6. ショートステイの料金内訳（1日あたり）
+                要介護1: 約2,950円
+                要介護2: 約3,050円
+                要介護3: 約3,150円
+                要介護4: 約3,200円
+                要介護5: 約3,250円
+            7. 老健（介護老人保健施設）月額
+                要介護1: 約10.1万円
+                要介護2: 約10.3万円
+                要介護3: 約10.5万円
+                要介護4: 約10.7万円
+                要介護5: 約10.9万円
+            8. 特養（特別養護老人ホーム）月額
+                要介護1: 約10.8万円
+                要介護2: 約11.1万円
+                要介護3: 約11.4万円
+                要介護4: 約11.7万円
+                要介護5: 約12万円
+
+            以下のユーザーの要望を元に、介護サービス費用を計算し、限度額内に収まっているか判定してください。
+            【ユーザーからの入力項目】
+            ・要介護度: ${kaigodo}
+            ・訪問介護（身体介護）: ${homeCareBodyCount}回/週、サービス内容: ${homeCareBodyType}
+            ・訪問介護（生活援助）: ${homeCareLifeCount}回/週、サービス内容: ${homeCareLifeType}
+            ・通所介護（デイサービス）: ${dayServiceCount}回/週
+            ・訪問看護: ${visitingNurseCount}回/週
+            ・デイケア: ${dayCareCount}回/週
+            ・ショートステイ: ${shortStayDays}日/月
+            ・入所施設: ${facilityType}
+            ・その他の費用: ${otherCost}円
+
+            【あなたの回答フォーマット】
+            - 選択された要介護度の限度額を提示する。
+            - ユーザーが入力したサービス内容の合計金額を計算する。
+            - 合計金額が限度額内であるかを判定し、「限度額内です」または「限度額を超過しています」と明確に回答する。
+            - 超過している場合は、どのサービスを減らすべきか、または代替案を提案する。`;
+
+            resultDiv.innerHTML = '<p id="loading">計算中です...<br>少々お待ちください。</p>';
+            resultDiv.classList.remove('limit-ok', 'limit-over');
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`APIエラー: ${response.status} - ${errorData.error.message}`);
+                }
+
+                const data = await response.json();
+                const aiResponse = data.candidates[0].content.parts[0].text;
+                
+                resultDiv.innerHTML = `<pre>${aiResponse}</pre>`;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">エラーが発生しました。<br>詳細: ${error.message}</p>`;
+            }
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`API Error: ${response.status} - ${errorData.error.message}`);
-        }
-
-        const data = await response.json();
-        const aiResponse = data.candidates[0].content.parts[0].text;
-        
-        // HTMLコンテンツを更新して回答を表示
-        contentDiv.innerHTML = `
-          <p><strong>Geminiからの回答:</strong></p>
-          <p>${aiResponse}</p>
-        `;
-      } catch (error) {
-        // エラーが発生した場合の処理
-        contentDiv.innerHTML = `<p style="color:red;">エラーが発生しました: ${error.message}</p>`;
-      }
-    });
-  </script>
+    </script>
 </body>
 </html>
