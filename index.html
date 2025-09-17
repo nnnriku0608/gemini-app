@@ -48,8 +48,8 @@
   </div>
   <div id="content">
     <p>ここにAIからの回答が表示されます。</p>
-    <p>（APIを呼び出すと、このテキストは置き換わります。）</p>
   </div>
+
   <script>
     // あなたのAPIキーをここに貼り付けます
     // ※注意：GitHub Pagesは公開されているため、APIキーは誰でも見ることができます。
@@ -84,6 +84,11 @@
             }]
           })
         });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`API Error: ${response.status} - ${errorData.error.message}`);
+        }
 
         const data = await response.json();
         const aiResponse = data.candidates[0].content.parts[0].text;
